@@ -1,51 +1,175 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat con Socket.IO</title>
     <style>
-      body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 
+        #form {
+            background: rgba(0, 0, 0, 0.15);
+            padding: 0.25rem;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            height: 3rem;
+            box-sizing: border-box;
+            backdrop-filter: blur(10px);
+        }
 
-      #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
-      #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
-      #input:focus { outline: none; }
-      #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+        #input {
+            border: none;
+            padding: 0 1rem;
+            flex-grow: 1;
+            border-radius: 2rem;
+            margin: 0.25rem;
+        }
 
+        #input:focus {
+            outline: none;
+        }
 
-      #messages { list-style-type: none; margin: 0; padding: 0; }
-      #messages > li { padding: 0.5rem 1rem; }
-      #messages > li:nth-child(odd) { background: #efefef; }
+        #user-select {
+            border: none;
+            padding: 0 1rem;
+            margin: 0.25rem;
+            border-radius: 5px;
+            min-width: 150px;
+        }
+
+        #form>button {
+            background: #333;
+            border: none;
+            padding: 0 1rem;
+            margin: 0.25rem;
+            border-radius: 3px;
+            outline: none;
+            color: #fff;
+        }
+
+        #messages {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        #messages>li {
+            padding: 0.5rem 1rem;
+        }
+
+        #messages>li:nth-child(odd) {
+            background: #efefef;
+        }
+
+        .my-message {
+            text-align: right;
+            color: blue;
+        }
+
+        .received-message {
+            text-align: left;
+            color: black;
+        }
+
+        #my-id-display {
+            padding: 10px;
+            background: #333;
+            color: white;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #messages {
+            margin-top: 50px;
+        }
     </style>
 </head>
+
 <body>
+    <div id="my-id-display">
+        ID: <span id="my-id" style="font-weight: bold; color: #333;"></span>
+    </div>
     <ul id="messages"></ul>
     <form action="" id="form">
+        <select id="user-select">
+            <option value="" disabled selected>Selecciona un usuario</option>
+        </select>
+
         <input type="text" id="input" autocomplete="off"><button>Send</button>
     </form>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         var socket = io();
 
+        const myIdElement = document.getElementById('my-id');
+
+        socket.on('connect', () => {
+            myIdElement.textContent = socket.id;
+        });
+
         let form = document.getElementById('form');
         let input = document.getElementById('input');
         let messages = document.getElementById('messages')
+        let userSelect = document.getElementById('user-select');
+        let myIdDisplay = document.getElementById('my-id-display');
 
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            if(input.value) {
-                socket.emit('chat message', input.value);
-                input.value = '';
+        socket.on('connect', () => {
+            myIdDisplay.textContent = `ID: ${socket.id}`;
+        });
+
+        socket.on("users", (users) => {
+            let currentSelection = userSelect.value;
+
+            users.forEach((user) => {
+                if (user.userID !== socket.id) {
+                    let option = document.createElement('option');
+                    option.value = user.userID;
+                    option.textContent = user.userID;
+                    userSelect.appendChild(option);
+                }
+            });
+
+            if (currentSelection) {
+                userSelect.value = currentSelection;
             }
-        })
+        });
 
-        socket.on('chat message', function(msg) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            let recipient = userSelect.value;
+
+            if (input.value && recipient) {
+                socket.emit('private message', {
+                    content: input.value,
+                    to: recipient
+                });
+
+                addMessageToScreen(`Tú: ${input.value}`, 'my-message');
+
+                input.value = '';
+            } else if (!recipient) {
+                alert("Selecciona un usuario");
+            }
+        });
+
+        socket.on('private message', function ({ content, from }) {
+            addMessageToScreen(`${from}: ${content}`, 'received-message');
+        });
+
+        function addMessageToScreen(msg, className) {
             let item = document.createElement('li');
             item.textContent = msg;
+            item.className = className;
             messages.appendChild(item);
-            window.scrollTo(0, document.body.scrollHeight)
-        })
+            window.scrollTo(0, document.body.scrollHeight);
+        }
     </script>
 </body>
+
 </html>
