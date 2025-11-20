@@ -164,8 +164,23 @@
 
         function addMessageToScreen(msg, className) {
             let item = document.createElement('li');
-            item.textContent = msg;
             item.className = className;
+
+            let messageText = document.createElement('span');
+            messageText.textContent = msg;
+
+            let now = new Date();
+            let timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            let timeSpan = document.createElement('span');
+            timeSpan.textContent = ` ${timeString}`;
+            timeSpan.style.fontSize = '0.7rem';
+            timeSpan.style.color = '#888';
+            timeSpan.style.marginLeft = '10px';
+
+            item.appendChild(messageText);
+            item.appendChild(timeSpan);
+
             messages.appendChild(item);
             window.scrollTo(0, document.body.scrollHeight);
         }
